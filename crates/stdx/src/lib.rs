@@ -2,6 +2,7 @@
 use std::{cmp::Ordering, ops, time::Instant};
 
 mod macros;
+#[cfg(feature = "unix_stuff")]
 pub mod process;
 pub mod panic_context;
 
@@ -110,9 +111,12 @@ pub fn defer<F: FnOnce()>(f: F) -> impl Drop {
     D(Some(f))
 }
 
-#[cfg_attr(not(target_arch = "wasm32"), repr(transparent))]
+
+#[cfg(feature = "unix_stuff")]
+#[repr(transparent)]
 pub struct JodChild(pub std::process::Child);
 
+#[cfg(feature = "unix_stuff")]
 impl ops::Deref for JodChild {
     type Target = std::process::Child;
     fn deref(&self) -> &std::process::Child {
@@ -120,12 +124,14 @@ impl ops::Deref for JodChild {
     }
 }
 
+#[cfg(feature = "unix_stuff")]
 impl ops::DerefMut for JodChild {
     fn deref_mut(&mut self) -> &mut std::process::Child {
         &mut self.0
     }
 }
 
+#[cfg(feature = "unix_stuff")]
 impl Drop for JodChild {
     fn drop(&mut self) {
         let _ = self.0.kill();
@@ -133,12 +139,10 @@ impl Drop for JodChild {
     }
 }
 
+#[cfg(feature = "unix_stuff")]
 impl JodChild {
     pub fn into_inner(self) -> std::process::Child {
-        if cfg!(target_arch = "wasm32") {
-            panic!("no processes on wasm");
-        }
-        // SAFETY: repr transparent, except on WASM
+        // SAFETY: repr transparent
         unsafe { std::mem::transmute::<JodChild, std::process::Child>(self) }
     }
 }
